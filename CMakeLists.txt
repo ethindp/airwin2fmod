@@ -1,0 +1,6 @@
+cmake_minimum_required(VERSION 3.14)
+project(airwin2fmod)
+message(STATUS "Configuring the generator")
+add_subdirectory(generator)
+message(STATUS "Configuring individual plug-ins, this will take a while")
+add_subdirectory(autogen)

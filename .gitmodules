@@ -1,0 +1,9 @@
+[submodule "external/airwin2rack"]
+	path = external/airwin2rack
+	url = https://github.com/baconpaul/airwin2rack
+[submodule "external/fmt"]
+	path = external/fmt
+	url = https://github.com/fmtlib/fmt
+[submodule "external/choc"]
+	path = external/choc
+	url = https://github.com/Tracktion/choc
