@@ -1,18 +1,22 @@
-cmake_minimum_required(VERSION 3.14)
+cmake_minimum_required(VERSION 3.20)
 project(autogen)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_C_STANDARD 17)
 set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
 if(CMAKE_BUILD_TYPE STREQUAL "Debug")
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDebugDll")
 else()
   set(CMAKE_MSVC_RUNTIME_LIBRARY "MultiThreadedDll")
+  set(CMAKE_C_VISIBILITY_PRESET hidden)
+  set(CMAKE_CXX_VISIBILITY_PRESET hidden)
+  set(CMAKE_VISIBILITY_INLINES_HIDDEN YES)
+  set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 endif()
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_SOURCE_DIR}/cmake"
      "${CMAKE_SOURCE_DIR}/cmake/modules")
-include(harden-target) # your existing helper
 include(CheckIPOSupported)
 find_package(Threads REQUIRED)
 find_package(FMOD MODULE REQUIRED)
@@ -57,7 +61,28 @@ function(add_airwindows_plugin plugin_name)
   endif()
   check_ipo_supported()
   set_property(TARGET ${plugin_name} PROPERTY INTERPROCEDURAL_OPTIMIZATION TRUE)
-  harden_target(${plugin_name})
+  if(NOT CMAKE_BUILD_TYPE STREQUAL "Debug")
+    set_target_properties(${plugin_name} PROPERTIES UNITY_BUILD ON)
+    set_target_properties(${plugin_name} PROPERTIES LINK_WHAT_YOU_USE TRUE)
+    target_compile_options(
+      ${plugin_name}
+      PRIVATE
+        $<$<AND:$<COMPILE_LANGUAGE:C>,$<C_COMPILER_ID:GNU,Clang,AppleClang>>:-ffunction-sections
+        -fdata-sections>
+        $<$<AND:$<COMPILE_LANGUAGE:CXX>,$<CXX_COMPILER_ID:GNU,Clang,AppleClang>>:-ffunction-sections
+        -fdata-sections>
+        $<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<C_COMPILER_ID:MSVC>>:/Gy
+        /Gw>
+        $<$<AND:$<COMPILE_LANGUAGE:C,CXX>,$<C_COMPILER_ID:IntelLLVM>>:-ffunction-sections
+        -fdata-sections>)
+    target_link_options(
+      ${plugin_name}
+      PRIVATE
+      $<$<CXX_COMPILER_ID:GNU,Clang,AppleClang>:-Wl,--gc-sections>
+      $<$<CXX_COMPILER_ID:GNU,Clang>:-Wl,--icf=all>
+      $<$<CXX_COMPILER_ID:MSVC>:/OPT:ICF
+      /OPT:REF>)
+  endif()
   install(FILES "$<TARGET_FILE:${plugin_name}>" DESTINATION ".")
 endfunction()
 

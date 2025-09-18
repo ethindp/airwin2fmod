@@ -8,8 +8,8 @@
 using namespace inja;
 
 int main() {
-  if (!std::filesystem::is_directory("templates")) {
-    fmt::println("Error: templates directory not found. Please create it and "
+  if (!std::filesystem::is_directory("template")) {
+    fmt::println("Error: template directory not found. Please create it and "
                  "copy all necessary files and re-run this program");
     return 1;
   }
@@ -32,20 +32,6 @@ int main() {
     fmt::println("Error: could not find cmake modules directory for template");
     return 1;
   }
-  if (!std::filesystem::is_regular_file("template/cmake/harden-target.cmake")) {
-    fmt::println("Error:  could not find hardening CMake module "
-                 "template/cmake/harden-target.cmake");
-    return 1;
-  }
-  if (!std::filesystem::is_directory("template/cmake/modules")) {
-    fmt::println("Error: could not find modules directory for cmake");
-    return 1;
-  }
-  if (!std::filesystem::is_regular_file(
-          "template/cmake/modules/FindFMOD.cmake")) {
-    fmt::println("Error: could not find FindFMOD.cmake module");
-    return 1;
-  }
   if (!std::filesystem::is_regular_file("template/bit_vector.hpp")) {
     fmt::println("Error: could not find bit vector implementation");
     return 1;
@@ -61,10 +47,6 @@ int main() {
       choc::file::loadFileAsString("template/CMakeLists.txt.inja");
   const auto miniaudio_impl =
       choc::file::loadFileAsString("template/miniaudio.h");
-  const auto harden_target_cmake_module_source =
-      choc::file::loadFileAsString("template/cmake/harden-target.cmake");
-  const auto find_fmod_cmake_module =
-      choc::file::loadFileAsString("template/cmake/modules/FindFMOD.cmake");
   const auto bit_vector_source =
       choc::file::loadFileAsString("template/bit_vector.hpp");
   const auto toplevel_cmake_source =
@@ -73,21 +55,6 @@ int main() {
     try {
       if (!std::filesystem::create_directory("autogen")) {
         fmt::println("Error: could no create autogen directory");
-        return 1;
-      }
-    } catch (std::exception &ex) {
-      fmt::println("Error: {}", ex.what());
-      return 1;
-    }
-  }
-  if (!std::filesystem::is_directory("autogen/cmake")) {
-    try {
-      if (!std::filesystem::create_directory("autogen/cmake")) {
-        fmt::println("Error: could not create autogen/cmake directory");
-        return 1;
-      }
-      if (!std::filesystem::create_directory("autogen/cmake/modules")) {
-        fmt::println("Error: could not create autogen/cmake/modules directory");
         return 1;
       }
     } catch (std::exception &ex) {
@@ -152,10 +119,6 @@ int main() {
     const auto toplevel_cmake = render(toplevel_cmake_source, data);
     choc::file::replaceFileWithContent("autogen/CMakeLists.txt",
                                        toplevel_cmake);
-    choc::file::replaceFileWithContent("autogen/cmake/harden-target.cmake",
-                                       harden_target_cmake_module_source);
-    choc::file::replaceFileWithContent("autogen/cmake/modules/FindFMOD.cmake",
-                                       find_fmod_cmake_module);
     return 0;
   } catch (std::exception &ex) {
     fmt::println("Error: {}", ex.what());
