@@ -19,9 +19,8 @@
 #include "miniaudio.h"
 #include <array>
 
-static FMOD_DSP_PARAMETER_DESC **g_param_ptrs = nullptr;
-static FMOD_DSP_PARAMETER_DESC *g_param_store = nullptr;
-static int g_param_count = 0;
+static std::array<FMOD_DSP_PARAMETER_DESC*, 2> g_param_ptrs;
+static std::array<FMOD_DSP_PARAMETER_DESC, 2> g_param_store;
 static FMOD_DSP_DESCRIPTION g_desc{};
 
 inline auto map_interleaved_to_planar(const std::size_t i,
@@ -234,48 +233,10 @@ FMOD_RESULT F_CALL plugin_get_parameter_float(FMOD_DSP_STATE *st, int index,
   return FMOD_OK;
 }
 
-FMOD_RESULT F_CALL plugin_sys_register(FMOD_DSP_STATE *state) {
+F_EXPORT FMOD_DSP_DESCRIPTION *F_CALL FMODGetDSPDescription() {
   const auto &reg =
       AirwinRegistry::registry[AirwinRegistry::nameToIndex["SpatializeDither"]];
   const auto plugin = reg.generator();
-  g_param_count = reg.nParams;
-  g_param_store = static_cast<FMOD_DSP_PARAMETER_DESC *>(
-      FMOD_DSP_ALLOC(state, sizeof(FMOD_DSP_PARAMETER_DESC) * g_param_count));
-  if (!g_param_store)
-    return FMOD_ERR_MEMORY;
-  g_param_ptrs = static_cast<FMOD_DSP_PARAMETER_DESC **>(
-      FMOD_DSP_ALLOC(state, sizeof(FMOD_DSP_PARAMETER_DESC *) * g_param_count));
-  if (!g_param_ptrs)
-    return FMOD_ERR_MEMORY;
-  for (int i = 0; i < g_param_count; ++i) {
-    g_param_ptrs[i] = &g_param_store[i];
-    std::array<char, kVstMaxParamStrLen> paramname, paramlabel;
-    const auto paramval = plugin->getParameter(i);
-    plugin->getParameterLabel(i, paramlabel.data());
-    plugin->getParameterName(i, paramname.data());
-    FMOD_DSP_INIT_PARAMDESC_FLOAT(g_param_store[i], paramname.data(),
-                                  paramlabel.data(), nullptr, 0.0, 1.0,
-                                  paramval);
-  }
-  g_desc.numparameters = g_param_count;
-  g_desc.paramdesc = g_param_ptrs;
-  return FMOD_OK;
-}
-
-FMOD_RESULT F_CALL plugin_sys_deregister(FMOD_DSP_STATE *state) {
-  if (g_param_ptrs) {
-    FMOD_DSP_FREE(state, g_param_ptrs);
-    g_param_ptrs = nullptr;
-  }
-  if (g_param_store) {
-    FMOD_DSP_FREE(state, g_param_store);
-    g_param_store = nullptr;
-  }
-  g_param_count = 0;
-  return FMOD_OK;
-}
-
-F_EXPORT FMOD_DSP_DESCRIPTION *F_CALL FMODGetDSPDescription() {
   g_desc.pluginsdkversion = FMOD_PLUGIN_SDK_VERSION;
   std::memset(g_desc.name, 0, sizeof(g_desc.name));
   std::strncpy(g_desc.name, "SpatializeDither", sizeof(g_desc.name) - 1);
@@ -288,8 +249,18 @@ F_EXPORT FMOD_DSP_DESCRIPTION *F_CALL FMODGetDSPDescription() {
   g_desc.process = plugin_process;
   g_desc.setparameterfloat = plugin_set_parameter_float;
   g_desc.getparameterfloat = plugin_get_parameter_float;
-  g_desc.sys_register = plugin_sys_register;
-  g_desc.sys_deregister = plugin_sys_deregister;
+  for (int i = 0; i < 2; ++i) {
+    g_param_ptrs[i] = &g_param_store[i];
+    std::array<char, kVstMaxParamStrLen> paramname, paramlabel;
+    const auto paramval = plugin->getParameter(i);
+    plugin->getParameterLabel(i, paramlabel.data());
+    plugin->getParameterName(i, paramname.data());
+    FMOD_DSP_INIT_PARAMDESC_FLOAT(g_param_store[i], paramname.data(),
+                                  paramlabel.data(), nullptr, 0.0, 1.0,
+                                  paramval);
+  }
+  g_desc.numparameters = 2;
+  g_desc.paramdesc = g_param_ptrs.data();
   return &g_desc;
 }
 }

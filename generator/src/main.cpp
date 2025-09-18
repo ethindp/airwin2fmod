@@ -83,6 +83,7 @@ int main() {
       data["plugin_first_commit"] = entry.firstCommitDate;
       data["plugin_category"] = entry.category;
       data["plugin_what_text"] = entry.whatText;
+      data["plugin_num_params"] = entry.nParams;
       const auto plugin_source = render(plugin_template, data);
       const auto cmake_source = render(cmakelists_template, data);
       choc::file::replaceFileWithContent(
